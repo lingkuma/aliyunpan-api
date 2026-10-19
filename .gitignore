@@ -16,6 +16,8 @@ out/
 .glide/
 
 # Others
+.env
+.env.*
 .DS_Store
 *.proc
 *.txt
