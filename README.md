@@ -9,14 +9,52 @@ GO语言封装的 aliyunpan 阿里云盘官方OpenAPI接口和网页端Web接口
 阿里官方OpenAPI的登录和网页版Web登录token是不一样的，方式也不一样，本仓库并没有这部分代码，你需要自行实现。
 1. 阿里官方OpenAPI的登录token，可以参考官方文档：https://www.yuque.com/aliyundrive/zpfszx/btw0tw
 2. 网页版Web的登录token，可以通过使用浏览器获取到的RefreshToken进行获取，样例如下：
-```
-	// get access token
-	refreshToken := "f34b54eba1...706f389"
-	webToken, err := aliyunpan_web.GetAccessTokenFromRefreshToken(refreshToken)
-	if err != nil {
-		fmt.Println("get web acccess token error")
-		return
-	}
+```javascript
+(async () => {
+  // 1) 自动寻找存 refresh_token 的 localStorage 项
+  let refreshToken = "", fromKey = "";
+  for (const k of Object.keys(localStorage)) {
+    const v = localStorage.getItem(k);
+    if (!v || !v.includes("refresh_token")) continue;
+    try {
+      const j = JSON.parse(v);
+      if (j.refresh_token) { refreshToken = j.refresh_token; fromKey = k; break; }
+    } catch (e) {}
+  }
+  if (!refreshToken) {
+    console.error("没找到 refresh_token，请改用 Network 面板抓 account/token 的响应");
+    return;
+  }
+  console.log("来源 key:", fromKey, "| token 长度:", refreshToken.length);
+
+  // 2) 换取 access_token
+  const res = await fetch("https://auth.aliyundrive.com/v2/account/token", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json;charset=UTF-8",
+      "origin": "https://www.aliyundrive.com",
+      "referer": "https://www.aliyundrive.com/"
+    },
+    body: JSON.stringify({
+      refresh_token: refreshToken,
+      api_id: "pJZInNHN2dZWk8qg",
+      grant_type: "refresh_token"
+    })
+  });
+  const data = await res.json();
+  console.log("HTTP", res.status, data);
+
+  if (data.access_token) {
+    console.table({
+      access_token:  data.access_token,
+      refresh_token: data.refresh_token,
+      expires_in:    data.expires_in,
+      expire_time:   data.expire_time
+    });
+    console.warn("旧的 refresh_token 已作废，请把上面这个新的另行保存");
+  }
+})();
+
 ```
 
 # 快速使用教程
